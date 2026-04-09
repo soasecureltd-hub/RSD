@@ -11,25 +11,25 @@ const apiClient = axios.create({
 
 // Risk assessment endpoints
 export const riskAPI = {
-  createAssessment: (data) => apiClient.post('/risk/assess', data),
-  getAssessment: (id) => apiClient.get(`/risk/assess/${id}`),
+  createAssessment: (data) => apiClient.post('/api/risk/assess', data),
+  getAssessment: (id) => apiClient.get(`/api/risk/assess/${id}`),
   listAssessments: (skip = 0, limit = 100) => 
-    apiClient.get(`/risk/assessments?skip=${skip}&limit=${limit}`),
+    apiClient.get(`/api/risk/assessments?skip=${skip}&limit=${limit}`),
   detectAnomalies: (assessmentId) => 
-    apiClient.post(`/risk/anomaly/${assessmentId}`),
+    apiClient.post(`/api/risk/anomaly/${assessmentId}`),
 };
 
 // Camera endpoints
 export const cameraAPI = {
   analyzeFrame: (cameraId, frameData) => 
-    apiClient.post('/camera/analyze', {
+    apiClient.post('/api/camera/analyze', {
       camera_id: cameraId,
       frame_data: frameData,
     }),
   getCameraStatus: (cameraId = 'CAM-DEFAULT') => 
-    apiClient.get(`/camera/health/${cameraId}`),
+    apiClient.get(`/api/camera/health/${cameraId}`),
   getCameraHistory: (cameraId, limit = 100) => 
-    apiClient.get(`/camera/history/${cameraId}?limit=${limit}`),
+    apiClient.get(`/api/camera/history/${cameraId}?limit=${limit}`),
 };
 
 // Health check
