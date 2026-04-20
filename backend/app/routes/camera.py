@@ -41,7 +41,10 @@ async def analyze_frame(
         monitor = get_monitor(camera_input.camera_id)
         
         # Decode base64 frame
-        frame_bytes = base64.b64decode(camera_input.frame_data)
+        b64_data = camera_input.frame_data
+        # Ensure correct padding for base64
+        b64_data += "=" * ((4 - len(b64_data) % 4) % 4)
+        frame_bytes = base64.b64decode(b64_data)
         image = Image.open(BytesIO(frame_bytes))
         frame = np.array(image)
         
@@ -49,8 +52,11 @@ async def analyze_frame(
         if len(frame.shape) == 3 and frame.shape[2] == 3:
             frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
         
+        # Convert zones
+        zones = [z.model_dump() for z in camera_input.zones] if camera_input.zones else []
+        
         # Analyze frame
-        health_data = monitor.analyze_frame(frame)
+        health_data = monitor.analyze_frame(frame, zones=zones)
         print(f"Camera analyze response detection_enabled={health_data.get('detection_enabled')} detections={len(health_data.get('detections', []))} object_counts={health_data.get('object_counts')}")
         
         # Save to database
@@ -72,10 +78,14 @@ async def analyze_frame(
             timestamp=health_data["timestamp"],
             detections=health_data.get("detections", []),
             object_counts=health_data.get("object_counts", {}),
-            detection_enabled=health_data.get("detection_enabled", False)
+            detection_enabled=health_data.get("detection_enabled", False),
+            zone_intrusions=health_data.get("zone_intrusions", []),
+            auto_risk_scores=health_data.get("auto_risk_scores", {})
         )
     
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 
@@ -104,7 +114,9 @@ def get_camera_status(camera_id: str = "CAM-DEFAULT"):
             timestamp=health_data["timestamp"],
             detections=health_data.get("detections", []),
             object_counts=health_data.get("object_counts", {}),
-            detection_enabled=health_data.get("detection_enabled", False)
+            detection_enabled=health_data.get("detection_enabled", False),
+            zone_intrusions=health_data.get("zone_intrusions", []),
+            auto_risk_scores=health_data.get("auto_risk_scores", {})
         )
     
     except Exception as e:
