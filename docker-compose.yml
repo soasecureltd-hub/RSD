@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend
+    environment:
+      - DATABASE_URL=sqlite:///./rsd.db
+      - DEBUG=True
+    working_dir: /app/backend
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --reload
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app/frontend
+    working_dir: /app/frontend
+    command: npm run dev -- --host
+
+volumes:
+  db_data:

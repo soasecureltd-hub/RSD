@@ -1,0 +1,137 @@
+.results-container {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.overall-score {
+  text-align: center;
+  margin-bottom: 40px;
+  padding: 40px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #f9fafb 100%);
+  border-radius: 12px;
+}
+
+.score-display h1 {
+  font-size: 60px;
+  margin-bottom: 10px;
+}
+
+.risk-level {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 40px;
+}
+
+.chart-container {
+  background: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+}
+
+.chart-container h3,
+.weaknesses-container h3 {
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+
+.weakness-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.weakness-item {
+  display: flex;
+  gap: 15px;
+  padding: 15px;
+  background: var(--light);
+  border-radius: 8px;
+  border-left: 4px solid var(--danger);
+}
+
+.weakness-rank {
+  font-weight: 600;
+  font-size: 24px;
+  color: var(--danger);
+  min-width: 40px;
+}
+
+.weakness-info {
+  flex: 1;
+}
+
+.weakness-area {
+  font-weight: 600;
+  margin-bottom: 5px;
+  color: var(--dark);
+}
+
+.weakness-score {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.recommendations-section {
+  background: var(--light);
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 30px;
+}
+
+.recommendations-section h3 {
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+
+.recommendations-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 15px;
+}
+
+.recommendation-item {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid var(--warning);
+}
+
+.recommendation-item h4 {
+  color: var(--dark);
+  margin-bottom: 8px;
+}
+
+.recommendation-item p {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .score-display h1 {
+    font-size: 48px;
+  }
+
+  .recommendations-list {
+    grid-template-columns: 1fr;
+  }
+}
