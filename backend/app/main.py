@@ -6,9 +6,10 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.db import init_db
-from app.routes import risk, camera
+from app.routes import risk, camera, monitoring
 from app.routes import auth as auth_routes
 from app.routes.camera import limiter
+from app.services.camera_manager import camera_manager
 
 # Sentry (only if DSN is configured)
 if settings.SENTRY_DSN:
@@ -39,6 +40,12 @@ app.add_middleware(
 app.include_router(auth_routes.router)
 app.include_router(risk.router)
 app.include_router(camera.router)
+app.include_router(monitoring.router)
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await camera_manager.shutdown()
 
 
 @app.get("/")
