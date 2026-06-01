@@ -1,13 +1,15 @@
 """
 Camera health monitoring routes
 """
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+import logging
+from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from app import schemas, crud
 from app.config import settings
 from app.db import get_db
+from app.dependencies import get_current_user
 from app.services.camera_service import CameraHealthMonitor
 import asyncio
 import cv2
@@ -15,6 +17,11 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 import base64
+
+logger = logging.getLogger(__name__)
+
+# Pillow refuses images above this many pixels (decompression-bomb guard).
+Image.MAX_IMAGE_PIXELS = settings.MAX_FRAME_PIXELS
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -36,7 +43,8 @@ def get_monitor(camera_id: str = "CAM-DEFAULT") -> CameraHealthMonitor:
 async def analyze_frame(
     request: Request,
     camera_input: schemas.CameraHealthInput,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """
     Analyze a camera frame for health metrics
@@ -50,10 +58,20 @@ async def analyze_frame(
         def _decode_and_analyze() -> dict:
             """Decode frame and run blocking CV analysis in a thread."""
             try:
-                frame_bytes = base64.b64decode(camera_input.frame_data)
+                frame_bytes = base64.b64decode(camera_input.frame_data, validate=True)
             except Exception:
                 raise ValueError("Invalid base64 frame data")
-            image = Image.open(BytesIO(frame_bytes))
+            if len(frame_bytes) > settings.MAX_FRAME_BYTES:
+                raise ValueError("Frame exceeds maximum allowed size")
+            try:
+                image = Image.open(BytesIO(frame_bytes))
+                image.verify()  # detect truncated/malformed images cheaply
+                # verify() leaves the image unusable; reopen to actually read pixels
+                image = Image.open(BytesIO(frame_bytes))
+            except Image.DecompressionBombError:
+                raise ValueError("Frame resolution exceeds allowed limit")
+            except Exception:
+                raise ValueError("Invalid or unsupported image data")
             frame = np.array(image)
             if len(frame.shape) == 3 and frame.shape[2] == 3:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -61,11 +79,16 @@ async def analyze_frame(
 
         # Run blocking OpenCV/YOLO work off the event-loop thread
         health_data = await asyncio.to_thread(_decode_and_analyze)
-        print(f"Camera analyze response detection_enabled={health_data.get('detection_enabled')} detections={len(health_data.get('detections', []))} object_counts={health_data.get('object_counts')}")
-        
+        logger.debug(
+            "Camera analyze: detection_enabled=%s detections=%d object_counts=%s",
+            health_data.get("detection_enabled"),
+            len(health_data.get("detections", [])),
+            health_data.get("object_counts"),
+        )
+
         # Save to database
         crud.create_camera_health(db, camera_input.camera_id, health_data)
-        
+
         # Format response
         return schemas.CameraHealthResponse(
             camera_id=health_data["camera_id"],
@@ -84,13 +107,20 @@ async def analyze_frame(
             object_counts=health_data.get("object_counts", {}),
             detection_enabled=health_data.get("detection_enabled", False)
         )
-    
-    except Exception as e:
+
+    except ValueError as e:
+        # Safe, client-facing validation messages (bad base64, oversized frame, etc.)
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Frame analysis failed for camera %s", camera_input.camera_id)
+        raise HTTPException(status_code=400, detail="Could not analyze frame")
 
 
 @router.get("/health/{camera_id}", response_model=schemas.CameraHealthResponse)
-def get_camera_status(camera_id: str = "CAM-DEFAULT"):
+def get_camera_status(
+    camera_id: str = "CAM-DEFAULT",
+    current_user=Depends(get_current_user),
+):
     """Get current camera status"""
     try:
         monitor = get_monitor(camera_id)
@@ -116,16 +146,18 @@ def get_camera_status(camera_id: str = "CAM-DEFAULT"):
             object_counts=health_data.get("object_counts", {}),
             detection_enabled=health_data.get("detection_enabled", False)
         )
-    
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+
+    except Exception:
+        logger.exception("Failed to get camera status for %s", camera_id)
+        raise HTTPException(status_code=400, detail="Could not get camera status")
 
 
 @router.get("/history/{camera_id}")
 def get_camera_history(
     camera_id: str,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
 ):
     """Get camera health history"""
     history = crud.get_camera_health_history(db, camera_id, limit=limit)
@@ -147,17 +179,21 @@ def get_camera_history(
 
 
 @router.get("/risk-estimation/{camera_id}")
-def get_camera_risk_estimation(camera_id: str):
+def get_camera_risk_estimation(
+    camera_id: str,
+    current_user=Depends(get_current_user),
+):
     """Get risk estimation parameters derived from camera data"""
     try:
         monitor = get_monitor(camera_id)
         estimation = monitor.estimate_risk()
-        
+
         if not estimation:
             return {"status": "error", "message": "Camera is offline or no data available"}
-            
+
         return {"status": "success", "data": estimation}
-    
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+
+    except Exception:
+        logger.exception("Risk estimation failed for camera %s", camera_id)
+        raise HTTPException(status_code=400, detail="Could not estimate risk")
 
