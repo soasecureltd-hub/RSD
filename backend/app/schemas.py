@@ -107,13 +107,14 @@ class CameraHealthResponse(BaseModel):
 
 class UserCreate(BaseModel):
     email: str
-    password: str = Field(min_length=8)
+    # max_length guards against DoS from hashing very large inputs.
+    password: str = Field(min_length=8, max_length=128)
     full_name: Optional[str] = None
 
 
 class UserLogin(BaseModel):
     email: str
-    password: str
+    password: str = Field(max_length=128)
 
 
 class Token(BaseModel):

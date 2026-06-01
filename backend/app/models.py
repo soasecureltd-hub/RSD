@@ -1,7 +1,7 @@
 """
 Database models using SQLAlchemy ORM
 """
-from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text, Boolean
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, Text, Boolean, ForeignKey
 from datetime import datetime, timezone
 from app.db import Base
 
@@ -23,6 +23,7 @@ class Assessment(Base):
     __tablename__ = "assessments"
     
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)  # owner
     facility_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

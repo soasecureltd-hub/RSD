@@ -1,4 +1,5 @@
 """Risk assessment routes"""
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app import schemas, crud
@@ -6,6 +7,8 @@ from app.db import get_db
 from app.dependencies import get_current_user
 from app.services.risk_service import compute_scores, risk_level, run_anomaly_engine
 from app.services.ml_service import predict as ml_predict
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/risk", tags=["risk"])
 
@@ -26,7 +29,7 @@ def create_assessment(
         }
         category_scores, contributions, overall_score = compute_scores(data)
         badge, risk_level_name, color = risk_level(overall_score)
-        db_assessment = crud.create_assessment(db, assessment)
+        db_assessment = crud.create_assessment(db, assessment, user_id=current_user.id)
         db_assessment = crud.update_assessment_results(
             db, db_assessment.id, category_scores, contributions, overall_score, risk_level_name
         )
@@ -39,8 +42,9 @@ def create_assessment(
             overall_score=overall_score,
             risk_level=risk_level_name,
         )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Failed to create risk assessment")
+        raise HTTPException(status_code=400, detail="Could not process assessment")
 
 
 @router.get("/assess/{assessment_id}", response_model=schemas.RiskAssessmentResponse)
@@ -49,7 +53,7 @@ def get_assessment(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    db_assessment = crud.get_assessment(db, assessment_id)
+    db_assessment = crud.get_assessment(db, assessment_id, user_id=current_user.id)
     if not db_assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     return schemas.RiskAssessmentResponse(
@@ -70,7 +74,7 @@ def list_assessments(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    assessments = crud.get_all_assessments(db, skip=skip, limit=limit)
+    assessments = crud.get_all_assessments(db, user_id=current_user.id, skip=skip, limit=limit)
     return [
         schemas.RiskAssessmentResponse(
             id=a.id,
@@ -91,7 +95,7 @@ def detect_anomalies(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    db_assessment = crud.get_assessment(db, assessment_id)
+    db_assessment = crud.get_assessment(db, assessment_id, user_id=current_user.id)
     if not db_assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     try:
@@ -101,8 +105,9 @@ def detect_anomalies(
             anomalies=[schemas.AnomalyAlert(**a) for a in anomalies],
             status="success" if len(anomalies) == 0 else "warning",
         )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        logger.exception("Anomaly detection failed for assessment %s", assessment_id)
+        raise HTTPException(status_code=400, detail="Could not run anomaly detection")
 
 
 @router.post("/predict/{assessment_id}", response_model=schemas.AIPredictionResponse)
@@ -112,7 +117,7 @@ def predict_risk(
     current_user=Depends(get_current_user),
 ):
     """Run ML model predictions for a completed assessment."""
-    db_assessment = crud.get_assessment(db, assessment_id)
+    db_assessment = crud.get_assessment(db, assessment_id, user_id=current_user.id)
     if not db_assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     if not db_assessment.category_scores:
@@ -139,5 +144,6 @@ def predict_risk(
             emergency_failure=predictions["emergency_failure"],
             perimeter_breach=predictions["perimeter_breach"],
         )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        logger.exception("ML prediction failed for assessment %s", assessment_id)
+        raise HTTPException(status_code=500, detail="Prediction failed")

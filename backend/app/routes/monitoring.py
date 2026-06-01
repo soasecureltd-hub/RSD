@@ -5,7 +5,7 @@ Real-time monitoring routes
 - WebSocket for real-time alerts and risk scores
 - Alert management
 """
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -13,8 +13,9 @@ import asyncio
 import cv2
 import logging
 
+from app.db import get_db
 from app.services.camera_manager import camera_manager
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, authenticate_token
 
 logger = logging.getLogger(__name__)
 
@@ -176,12 +177,24 @@ async def _generate_mjpeg(camera_id: str):
 
 
 @router.get("/cameras/{camera_id}/feed")
-async def camera_feed(camera_id: str):
+async def camera_feed(camera_id: str, token: str = Query(...)):
     """
     Live MJPEG video feed from a camera.
     Shows detections overlaid on the live stream.
-    No auth required for stream (token would complicate <img> tags).
+
+    Auth is supplied via a `?token=<jwt>` query parameter because <img>/MJPEG
+    requests cannot set an Authorization header.
     """
+    db = next(get_db())
+    try:
+        if authenticate_token(token, db) is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Could not validate credentials",
+            )
+    finally:
+        db.close()
+
     if camera_id not in camera_manager.cameras:
         raise HTTPException(status_code=404, detail=f"Camera '{camera_id}' not found")
 
@@ -254,18 +267,30 @@ async def update_settings(
 # ============ WebSocket ============
 
 @router.websocket("/ws")
-async def monitoring_websocket(websocket: WebSocket):
+async def monitoring_websocket(websocket: WebSocket, token: str = Query(default="")):
     """
     WebSocket endpoint for real-time monitoring updates.
+
+    Auth via `?token=<jwt>` query parameter. Unauthenticated connections are
+    rejected before any data is sent.
 
     Clients receive:
     - risk_assessment: periodic risk score updates
     - alert: real-time security alerts
     - camera_status: camera state changes
     """
+    db = next(get_db())
+    try:
+        user = authenticate_token(token, db)
+    finally:
+        db.close()
+    if user is None:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
     await websocket.accept()
     camera_manager.add_websocket_client(websocket)
-    logger.info("WebSocket client connected")
+    logger.info("WebSocket client connected: %s", user.email)
 
     try:
         # Send current state on connect
