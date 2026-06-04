@@ -15,3 +15,12 @@ services:
         value: https://rsd-frontend.onrender.com  # Replace with your actual frontend URL
       - key: SENTRY_DSN
         value: ""                  # Optional: set your Sentry DSN here
+
+  - type: web
+    name: rsd-frontend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.frontend
+    dockerContext: .
+    dockerBuildArgs:
+      - key: VITE_API_URL
+        value: https://risk-assement.onrender.com/api  # Replace with your actual backend URL
