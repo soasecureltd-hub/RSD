@@ -4,7 +4,7 @@ Application configuration
 import os
 import secrets
 import warnings
-from pydantic import field_validator, model_validator
+from pydantic import model_validator
 from pydantic_settings import BaseSettings
 
 # Placeholder shipped in the repo. Treated as "unset" so it can never be used
@@ -39,25 +39,13 @@ class Settings(BaseSettings):
     # NOTE: SQLite does not support concurrent writes. If deploying with Gunicorn
     # and multiple workers (--workers > 1), switch DATABASE_URL to PostgreSQL.
     
-    # CORS — accepts a JSON array string or a comma-separated string from env.
+    # CORS — comma-separated origins string.
     # e.g. ALLOWED_ORIGINS=https://foo.onrender.com,https://bar.onrender.com
-    ALLOWED_ORIGINS: list = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ]
+    ALLOWED_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
 
-    @field_validator("ALLOWED_ORIGINS", mode="before")
-    @classmethod
-    def _parse_origins(cls, v):
-        if isinstance(v, str):
-            v = v.strip()
-            if v.startswith("["):
-                import json
-                return json.loads(v)
-            return [o.strip() for o in v.split(",") if o.strip()]
-        return v
+    @property
+    def allowed_origins_list(self) -> list:
+        return [o.strip() for o in self.ALLOWED_ORIGINS.split(",") if o.strip()]
 
     # JWT Authentication
     # No usable default: must be supplied via environment / .env in production.
