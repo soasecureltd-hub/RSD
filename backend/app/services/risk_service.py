@@ -3,7 +3,6 @@ Risk assessment and scoring business logic
 Ported from old risk_ass.py
 """
 import numpy as np
-import pandas as pd
 from typing import Dict, Tuple, List
 
 
@@ -88,49 +87,6 @@ def risk_level(score: float) -> Tuple[str, str, str]:
         return ("🔴 CRITICAL RISK", "Critical", "#dc3545")
 
 
-def build_ml_features(data: Dict) -> pd.DataFrame:
-    """
-    Build feature matrix for ML model from assessment data
-    
-    Args:
-        data: Assessment data
-        
-    Returns:
-        DataFrame with ML features
-    """
-    try:
-        physical = data.get("physical_security", {})
-        access = data.get("access_control", {})
-        personnel = data.get("personnel", {})
-        incidents = data.get("incident_history", {})
-        emergency = data.get("emergency_preparedness", {})
-        
-        return pd.DataFrame([{
-            "size_employees": 580,
-            "daily_visitors": 60,
-            "facility_area_sqm": 22000,
-            "cctv_coverage_pct": physical.get("cctv_coverage", 75),
-            "cctv_functional_pct": physical.get("cctv_functionality", 85),
-            "perimeter_cond_num": map_score(physical.get("perimeter_condition", "Good")),
-            "recording_sys_num": 30,
-            "exterior_light_num": map_score(physical.get("lighting_quality", "Good")),
-            "interior_light_num": 70,
-            "parking_security": 1,
-            "total_guards": 12,
-            "guard_to_area_ratio_per_1000sqm": 12 / 22,
-            "training_frequency_years": 2,
-            "background_check_num": map_score(personnel.get("background_checks", "Good")),
-            "turnover_rate_pct": 60,
-            "documentation_quality_num": map_score(incidents.get("documentation_quality", "Good")),
-            "avg_response_time_min": 12,
-            "communication_score": map_score(emergency.get("communication_system", "Good")),
-            "emergency_plan_flag": 1 if emergency.get("emergency_plan") != "Poor" else 0,
-            "drill_frequency_per_year": 2
-        }])
-    except Exception as e:
-        raise ValueError(f"Error building ML features: {str(e)}")
-
-
 def build_anomaly_features(data: Dict) -> Dict:
     """Build features for anomaly detection"""
     try:
@@ -151,9 +107,12 @@ def build_anomaly_features(data: Dict) -> Dict:
         raise ValueError(f"Error building anomaly features: {str(e)}")
 
 
+_rng = np.random.default_rng(42)
+
+
 def generate_baseline(feature_name: str, mean: float, std: float, n: int = 30) -> np.ndarray:
     """Generate baseline distribution"""
-    return np.random.normal(mean, std, n)
+    return _rng.normal(mean, std, n)
 
 
 def z_score_anomaly(current: float, baseline: np.ndarray) -> float:

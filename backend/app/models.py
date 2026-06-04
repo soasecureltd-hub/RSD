@@ -25,8 +25,8 @@ class Assessment(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)  # owner
     facility_name = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
     
     # Input data
     input_data = Column(JSON, nullable=False)  # The raw form data
@@ -47,7 +47,7 @@ class CameraHealth(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     camera_id = Column(String, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     
     # Metrics
     health_score = Column(Float, nullable=False)
@@ -67,7 +67,7 @@ class AIPrediction(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     assessment_id = Column(Integer, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     
     # Input features
     input_features = Column(JSON, nullable=False)

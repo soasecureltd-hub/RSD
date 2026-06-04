@@ -1,7 +1,7 @@
 """
 Pydantic schemas for request/response validation
 """
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from typing import Dict, List, Optional
 from datetime import datetime
 
@@ -106,14 +106,14 @@ class CameraHealthResponse(BaseModel):
 # ============ Auth Schemas ============
 
 class UserCreate(BaseModel):
-    email: str
+    email: EmailStr
     # max_length guards against DoS from hashing very large inputs.
     password: str = Field(min_length=8, max_length=128)
     full_name: Optional[str] = None
 
 
 class UserLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str = Field(max_length=128)
 
 

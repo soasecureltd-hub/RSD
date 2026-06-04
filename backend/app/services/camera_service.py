@@ -5,7 +5,7 @@ Includes object detection via YOLOv8
 """
 import cv2
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List
 from collections import deque
 from pathlib import Path
@@ -79,7 +79,7 @@ class CameraHealthMonitor:
             return self._create_offline_status()
         
         self.is_online = True
-        self.last_check_time = datetime.now()
+        self.last_check_time = datetime.now(timezone.utc)
         self.total_frames += 1
         
         # Convert to grayscale for health analysis
@@ -122,7 +122,7 @@ class CameraHealthMonitor:
         
         return {
             "camera_id": self.camera_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": "online",
             "health_score": round(health_score, 2),
             "metrics": {
@@ -304,7 +304,7 @@ class CameraHealthMonitor:
         
         for issue in issues:
             alert = {
-                "timestamp": datetime.now().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "issue": issue,
                 "severity": severity_map.get(issue, "low"),
                 "message": self._get_issue_message(issue)
@@ -328,7 +328,7 @@ class CameraHealthMonitor:
         """Create status for offline camera"""
         return {
             "camera_id": self.camera_id,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "status": "offline",
             "health_score": 0,
             "metrics": {},
@@ -367,7 +367,7 @@ class CameraHealthMonitor:
             
         person_count = self.object_counts.get("person", 0)
         
-        current_hour = datetime.now().hour
+        current_hour = datetime.now(timezone.utc).hour
         after_hours = current_hour >= 19 or current_hour < 6
         
         incident_severity = 40

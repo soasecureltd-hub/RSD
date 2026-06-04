@@ -2,7 +2,7 @@
 CRUD operations for database models
 """
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from app import models, schemas
 from passlib.context import CryptContext
 
@@ -96,7 +96,7 @@ def update_assessment_results(
         assessment.contributions = contributions
         assessment.overall_score = overall_score
         assessment.risk_level = risk_level
-        assessment.updated_at = datetime.utcnow()
+        assessment.updated_at = datetime.now(timezone.utc)
         db.commit()
         db.refresh(assessment)
     

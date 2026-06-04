@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: rsd-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: .
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true        # Render generates a secure random value on first deploy
+      - key: DEBUG
+        value: false
+      - key: DATABASE_URL
+        value: sqlite:///./rsd.db  # Replace with a Render PostgreSQL URL for persistent data
+      - key: ALLOWED_ORIGINS
+        value: 'https://rsd-frontend.onrender.com'  # Replace with your actual frontend URL
+      - key: SENTRY_DSN
+        value: ""                  # Optional: set your Sentry DSN here
