@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+export const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 const TOKEN_KEY = 'rsd_token';
 
 const apiClient = axios.create({
@@ -48,6 +48,20 @@ export const cameraAPI = {
   getCameraStatus: (cameraId = 'CAM-DEFAULT') => apiClient.get(`/camera/health/${cameraId}`),
   getCameraHistory: (cameraId, limit = 100) => apiClient.get(`/camera/history/${cameraId}?limit=${limit}`),
   getCameraRiskEstimation: (cameraId = 'CAM-DEFAULT') => apiClient.get(`/camera/risk-estimation/${cameraId}`),
+};
+
+export const monitoringAPI = {
+  listCameras: () => apiClient.get('/monitoring/cameras'),
+  registerCamera: (data) => apiClient.post('/monitoring/cameras', data),
+  removeCamera: (id) => apiClient.delete(`/monitoring/cameras/${id}`),
+  getCamera: (id) => apiClient.get(`/monitoring/cameras/${id}`),
+  startMonitoring: (id) => apiClient.post(`/monitoring/cameras/${id}/start`),
+  stopMonitoring: (id) => apiClient.post(`/monitoring/cameras/${id}/stop`),
+  getAlerts: (limit = 50, severity) =>
+    apiClient.get('/monitoring/alerts', { params: { limit, ...(severity && { severity }) } }),
+  acknowledgeAlert: (id) => apiClient.post(`/monitoring/alerts/${id}/acknowledge`),
+  getSettings: () => apiClient.get('/monitoring/settings'),
+  updateSettings: (data) => apiClient.put('/monitoring/settings', data),
 };
 
 export const health = () => apiClient.get('/');

@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import CameraHealth from './components/CameraHealth';
+import Monitoring from './pages/Monitoring';
 import './styles/App.css';
 
 function AppShell() {
@@ -35,6 +36,7 @@ function AppShell() {
           <button onClick={() => setCurrentPage('home')}>Home</button>
           <button onClick={() => setCurrentPage('dashboard')}>Assessment</button>
           <button onClick={() => setCurrentPage('camera')}>Camera</button>
+          <button onClick={() => setCurrentPage('monitoring')}>Monitoring</button>
         </nav>
         <div className="nav-user">
           <span className="nav-email">{user?.email}</span>
@@ -46,6 +48,7 @@ function AppShell() {
         {currentPage === 'home' && <Home onNavigate={setCurrentPage} />}
         {currentPage === 'dashboard' && <Dashboard />}
         {currentPage === 'camera' && <CameraHealth />}
+        {currentPage === 'monitoring' && <Monitoring />}
       </main>
 
       <footer className="app-footer">
