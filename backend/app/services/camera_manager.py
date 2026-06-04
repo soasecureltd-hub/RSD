@@ -43,6 +43,7 @@ class CameraStream:
     latest_frame: Optional[object] = None  # Most recent raw frame (np.ndarray)
     error_message: str = ""
     frame_count: int = 0
+    browser_last_assessment: Optional[datetime] = None
 
 
 @dataclass
@@ -130,6 +131,13 @@ class CameraManager:
             raise ValueError(f"Camera '{camera_id}' not found")
 
         stream = self.cameras[camera_id]
+
+        # Browser cameras receive frames pushed from the client — no VideoCapture needed
+        if stream.source == "browser":
+            stream.status = CameraStatus.MONITORING
+            stream.error_message = ""
+            logger.info(f"Browser camera monitoring started: {camera_id}")
+            return
 
         # Open video capture
         source = int(stream.source) if stream.source.isdigit() else stream.source

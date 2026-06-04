@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { monitoringAPI, API_BASE_URL } from '../api/apiClient';
+import BrowserCameraCapture from '../components/BrowserCameraCapture';
 import '../styles/Monitoring.css';
 
 const TOKEN_KEY = 'rsd_token';
@@ -270,7 +271,7 @@ export default function Monitoring() {
                   value={form.source}
                   onChange={e => setForm({ ...form, source: e.target.value })}
                 />
-                <span className="field-hint">Use "0" for the default webcam</span>
+                <span className="field-hint">Use "browser" for your webcam, or an RTSP URL for an IP camera</span>
               </div>
               <div className="form-field">
                 <label>Location</label>
@@ -388,7 +389,7 @@ export default function Monitoring() {
                       </button>
                     )}
 
-                    {cam.status === 'monitoring' && (
+                    {cam.status === 'monitoring' && cam.source !== 'browser' && (
                       <button
                         className={`btn-sm ${activeFeed === cam.camera_id ? 'btn-active' : 'btn-secondary'}`}
                         onClick={() => setActiveFeed(activeFeed === cam.camera_id ? null : cam.camera_id)}
@@ -402,7 +403,7 @@ export default function Monitoring() {
                     </button>
                   </div>
 
-                  {activeFeed === cam.camera_id && (
+                  {activeFeed === cam.camera_id && cam.source !== 'browser' && (
                     <div className="live-feed-wrapper">
                       <img
                         src={feedUrl(cam.camera_id)}
@@ -411,6 +412,13 @@ export default function Monitoring() {
                         onError={() => setError('Feed unavailable — camera may have stopped')}
                       />
                     </div>
+                  )}
+
+                  {cam.source === 'browser' && cam.status === 'monitoring' && (
+                    <BrowserCameraCapture
+                      cameraId={cam.camera_id}
+                      cameraName={cam.name}
+                    />
                   )}
                 </div>
               ))}

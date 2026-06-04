@@ -4,11 +4,19 @@ Warning: Could not load YOLO model: Weights only load failed. This file can stil
 	WeightsUnpickler error: Unsupported global: GLOBAL ultralytics.nn.tasks.DetectionModel was not an allowed global by default. Please use `torch.serialization.add_safe_globals([ultralytics.nn.tasks.DetectionModel])` or the `torch.serialization.safe_globals([ultralytics.nn.tasks.DetectionModel])` context manager to allowlist this global if you trust this class/function.
 Check the documentation of torch.load to learn more about types accepted by default with weights_only https://pytorch.org/docs/stable/generated/torch.load.html.
 INFO:     10.30.168.131:0 - "POST /api/monitoring/cameras HTTP/1.1" 201 Created
-INFO:     10.27.69.3:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
-INFO:     10.30.168.131:0 - "OPTIONS /api/monitoring/cameras/Cam%20001/start HTTP/1.1" 200 OK
-[ WARN:0@379.680] global cap_v4l.cpp:913 open VIDEOIO(V4L2:/dev/video0): can't open camera by index
-[ERROR:0@379.682] global obsensor_uvc_stream_channel.cpp:158 getStreamChannelGroup Camera index out of range
-INFO:     10.30.168.131:0 - "POST /api/monitoring/cameras/Cam%20001/start HTTP/1.1" 200 OK
 INFO:     10.30.168.131:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+INFO:     10.30.168.131:0 - "OPTIONS /api/monitoring/cameras/test2/start HTTP/1.1" 200 OK
+INFO:     10.30.168.131:0 - "POST /api/monitoring/cameras/test2/start HTTP/1.1" 200 OK
+[ WARN:0@301.811] global cap_ffmpeg_impl.hpp:453 _opencv_ffmpeg_interrupt_callback Stream timeout triggered after 30071.753274 ms
+INFO:     10.25.191.77:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+INFO:     10.27.69.3:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+INFO:     10.25.191.77:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+INFO:     10.30.168.131:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+INFO:     10.27.69.3:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+INFO:     10.30.168.131:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+==> Detected service running on port 8000
+==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+INFO:     10.27.69.3:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
+INFO:     10.27.69.3:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
 INFO:     10.27.69.3:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK
 INFO:     10.27.69.3:0 - "GET /api/monitoring/cameras HTTP/1.1" 200 OK

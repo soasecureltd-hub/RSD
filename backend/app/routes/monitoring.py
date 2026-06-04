@@ -10,8 +10,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional
 import asyncio
+import base64
 import cv2
+import numpy as np
 import logging
+from datetime import datetime, timezone
+from io import BytesIO
+from PIL import Image
 
 from app.db import get_db
 from app.services.camera_manager import camera_manager
@@ -40,6 +45,10 @@ class MonitoringSettingsRequest(BaseModel):
     assessment_interval: Optional[int] = None  # seconds
     frame_sample_interval: Optional[int] = None  # seconds
     risk_threshold: Optional[float] = None
+
+
+class PushFrameRequest(BaseModel):
+    frame_data: str  # base64-encoded JPEG from browser webcam
 
 
 # ============ Camera Management ============
@@ -114,6 +123,63 @@ async def stop_monitoring(camera_id: str, current_user=Depends(get_current_user)
         return {"message": f"Monitoring stopped for '{camera_id}'", "status": "idle"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# ============ Browser Camera Frame Push ============
+
+@router.post("/cameras/{camera_id}/push-frame")
+async def push_frame(
+    camera_id: str,
+    request: PushFrameRequest,
+    current_user=Depends(get_current_user),
+):
+    """
+    Receive a webcam frame from the browser for a browser-source camera.
+    Runs the full analysis pipeline (health, YOLO, zone intrusion, risk scoring).
+    """
+    if camera_id not in camera_manager.cameras:
+        raise HTTPException(status_code=404, detail=f"Camera '{camera_id}' not found")
+
+    stream = camera_manager.cameras[camera_id]
+    if stream.status.value != "monitoring":
+        raise HTTPException(status_code=400, detail="Camera is not in monitoring state")
+
+    try:
+        b64 = request.frame_data
+        b64 += "=" * ((4 - len(b64) % 4) % 4)
+        frame_bytes = base64.b64decode(b64)
+        image = Image.open(BytesIO(frame_bytes))
+        frame = np.array(image)
+        if len(frame.shape) == 3 and frame.shape[2] == 3:
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid frame data")
+
+    # Update stream state
+    stream.latest_frame = frame.copy()
+    stream.last_frame_time = datetime.now(timezone.utc)
+    stream.frame_count += 1
+
+    # Run full analysis in thread pool
+    analysis = await asyncio.to_thread(stream.monitor.analyze_frame, frame)
+
+    # Check for immediate threats
+    await camera_manager._check_immediate_threats(camera_id, analysis)
+
+    # Periodic risk assessment
+    now = datetime.now(timezone.utc)
+    last = stream.browser_last_assessment
+    elapsed = (now - last).total_seconds() if last else camera_manager.assessment_interval + 1
+    if elapsed >= camera_manager.assessment_interval:
+        await camera_manager._compute_risk_assessment(camera_id)
+        stream.browser_last_assessment = now
+
+    return {
+        "health_score": analysis.get("health_score"),
+        "object_counts": analysis.get("object_counts", {}),
+        "zone_intrusions": analysis.get("zone_intrusions", []),
+        "issues": analysis.get("issues", []),
+    }
 
 
 # ============ Live Video Feed ============

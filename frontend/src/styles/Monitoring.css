@@ -336,6 +336,49 @@
 .alert-time { font-size: 0.72rem; color: #9ca3af; white-space: nowrap; }
 .alert-message { font-size: 0.82rem; color: var(--text); line-height: 1.4; }
 
+/* Browser camera capture */
+.browser-capture { margin-top: 0.75rem; }
+
+.browser-capture-error {
+  font-size: 0.78rem;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+.browser-capture-feed {
+  margin-top: 0.75rem;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #10b981;
+  position: relative;
+}
+
+.browser-capture-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+}
+
+.browser-capture-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: #f9fafb;
+  font-size: 0.78rem;
+}
+
 /* Empty state */
 .empty-state {
   text-align: center;

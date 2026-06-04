@@ -62,6 +62,8 @@ export const monitoringAPI = {
   acknowledgeAlert: (id) => apiClient.post(`/monitoring/alerts/${id}/acknowledge`),
   getSettings: () => apiClient.get('/monitoring/settings'),
   updateSettings: (data) => apiClient.put('/monitoring/settings', data),
+  pushFrame: (cameraId, frameData) =>
+    apiClient.post(`/monitoring/cameras/${cameraId}/push-frame`, { frame_data: frameData }),
 };
 
 export const health = () => apiClient.get('/');
