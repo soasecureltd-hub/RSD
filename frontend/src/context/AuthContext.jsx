@@ -52,7 +52,13 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (email, password, full_name) => {
-    await apiClient.post('/auth/register', { email, password, full_name });
+    try {
+      await apiClient.post('/auth/register', { email, password, full_name });
+    } catch (err) {
+      const detail = err.response?.data?.detail || 'Registration failed';
+      throw new Error(detail);
+    }
+    // Registration succeeded — now sign in. A failure here is a login error, not a registration error.
     await login(email, password);
   };
 

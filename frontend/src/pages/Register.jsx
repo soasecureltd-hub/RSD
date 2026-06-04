@@ -21,7 +21,7 @@ export default function Register({ onSwitchToLogin }) {
     try {
       await register(email, password, fullName);
     } catch (err) {
-      setError(err.response?.data?.detail || 'Registration failed');
+      setError(err.message || err.response?.data?.detail || 'Registration failed');
     } finally {
       setLoading(false);
     }
