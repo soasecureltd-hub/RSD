@@ -73,8 +73,10 @@ class CameraHealthMonitor:
         self.detected_objects = []
         self.object_counts = {}
     
-    def analyze_frame(self, frame: np.ndarray) -> Dict:
+    def analyze_frame(self, frame: np.ndarray, zones: List[Dict] = None) -> Dict:
         """Analyze a single frame and return health metrics + detections"""
+        if zones is None:
+            zones = []
         if frame is None or frame.size == 0:
             return self._create_offline_status()
         
@@ -112,9 +114,31 @@ class CameraHealthMonitor:
         # Object detection
         detections = []
         object_counts = {}
+        zone_intrusions = []
         if self.detection_enabled and self.model:
             detections, object_counts = self._detect_objects(frame)
-        
+
+            for det in detections:
+                if det["class"] == "person":
+                    dx1, dy1, dx2, dy2 = det["box"]
+                    for zone in zones:
+                        zx1 = float(zone.get("x", 0))
+                        zy1 = float(zone.get("y", 0))
+                        zx2 = zx1 + float(zone.get("width", 0))
+                        zy2 = zy1 + float(zone.get("height", 0))
+                        if not (dx2 < zx1 or dx1 > zx2 or dy2 < zy1 or dy1 > zy2):
+                            zone_intrusions.append({
+                                "zone_id": zone.get("id", ""),
+                                "zone_name": zone.get("name", "Unknown Zone"),
+                                "confidence": det["confidence"],
+                                "timestamp": datetime.now(timezone.utc).isoformat()
+                            })
+
+        auto_risk_scores = {
+            "lighting_quality": "Good" if 50 <= brightness <= 200 else "Poor",
+            "cctv_functionality": "Good" if blur_score >= 100 and obstruction_score < 0.5 else "Poor"
+        }
+
         # Store frame for next comparison
         self.last_frame = gray.copy()
         self.detected_objects = detections
@@ -138,9 +162,11 @@ class CameraHealthMonitor:
             "frame_count": self.total_frames,
             "detections": detections,
             "object_counts": object_counts,
-            "detection_enabled": self.detection_enabled
+            "detection_enabled": self.detection_enabled,
+            "zone_intrusions": zone_intrusions,
+            "auto_risk_scores": auto_risk_scores
         }
-    
+
     def _detect_objects(self, frame: np.ndarray) -> tuple:
         """
         Detect objects in frame using YOLOv8
@@ -337,7 +363,9 @@ class CameraHealthMonitor:
             "frame_count": self.total_frames,
             "detections": [],
             "object_counts": {},
-            "detection_enabled": self.detection_enabled
+            "detection_enabled": self.detection_enabled,
+            "zone_intrusions": [],
+            "auto_risk_scores": {}
         }
 
     def estimate_risk(self) -> Dict:

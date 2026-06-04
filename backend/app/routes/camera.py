@@ -58,7 +58,9 @@ async def analyze_frame(
         def _decode_and_analyze() -> dict:
             """Decode frame and run blocking CV analysis in a thread."""
             try:
-                frame_bytes = base64.b64decode(camera_input.frame_data, validate=True)
+                b64_data = camera_input.frame_data
+                b64_data += "=" * ((4 - len(b64_data) % 4) % 4)
+                frame_bytes = base64.b64decode(b64_data)
             except Exception:
                 raise ValueError("Invalid base64 frame data")
             if len(frame_bytes) > settings.MAX_FRAME_BYTES:
@@ -75,7 +77,8 @@ async def analyze_frame(
             frame = np.array(image)
             if len(frame.shape) == 3 and frame.shape[2] == 3:
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            return monitor.analyze_frame(frame)
+            zones = [z.model_dump() for z in camera_input.zones] if camera_input.zones else []
+            return monitor.analyze_frame(frame, zones=zones)
 
         # Run blocking OpenCV/YOLO work off the event-loop thread
         health_data = await asyncio.to_thread(_decode_and_analyze)
@@ -105,7 +108,9 @@ async def analyze_frame(
             timestamp=health_data["timestamp"],
             detections=health_data.get("detections", []),
             object_counts=health_data.get("object_counts", {}),
-            detection_enabled=health_data.get("detection_enabled", False)
+            detection_enabled=health_data.get("detection_enabled", False),
+            zone_intrusions=health_data.get("zone_intrusions", []),
+            auto_risk_scores=health_data.get("auto_risk_scores", {})
         )
 
     except ValueError as e:

@@ -44,7 +44,7 @@ export const riskAPI = {
 };
 
 export const cameraAPI = {
-  analyzeFrame: (cameraId, frameData) => apiClient.post('/camera/analyze', { camera_id: cameraId, frame_data: frameData }),
+  analyzeFrame: (cameraId, frameData, zones = []) => apiClient.post('/camera/analyze', { camera_id: cameraId, frame_data: frameData, zones }),
   getCameraStatus: (cameraId = 'CAM-DEFAULT') => apiClient.get(`/camera/health/${cameraId}`),
   getCameraHistory: (cameraId, limit = 100) => apiClient.get(`/camera/history/${cameraId}?limit=${limit}`),
   getCameraRiskEstimation: (cameraId = 'CAM-DEFAULT') => apiClient.get(`/camera/risk-estimation/${cameraId}`),
