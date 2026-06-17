@@ -163,10 +163,14 @@ async def push_frame(
     # Run full analysis in thread pool
     analysis = await asyncio.to_thread(stream.monitor.analyze_frame, frame)
 
-    # Check for immediate threats
+    # Record zone intrusion events into the facility event log
+    for intrusion in analysis.get("zone_intrusions", []):
+        camera_manager.record_event(camera_id, "zone_intrusion", "high", intrusion)
+
+    # Check for immediate threats (records threat/crowd/after-hours events internally)
     await camera_manager._check_immediate_threats(camera_id, analysis)
 
-    # Periodic risk assessment
+    # Periodic per-camera risk assessment
     now = datetime.now(timezone.utc)
     last = stream.browser_last_assessment
     elapsed = (now - last).total_seconds() if last else camera_manager.assessment_interval + 1
@@ -174,12 +178,40 @@ async def push_frame(
         await camera_manager._compute_risk_assessment(camera_id)
         stream.browser_last_assessment = now
 
+    # Update facility-level live risk (debounced to once per 60s)
+    await camera_manager.maybe_update_facility_risk()
+
     return {
         "health_score": analysis.get("health_score"),
         "object_counts": analysis.get("object_counts", {}),
         "zone_intrusions": analysis.get("zone_intrusions", []),
         "issues": analysis.get("issues", []),
     }
+
+
+# ============ Facility Live Risk ============
+
+@router.get("/live-risk")
+async def get_live_risk(current_user=Depends(get_current_user)):
+    """
+    Return the latest facility-level live risk score aggregated across all cameras.
+    If no computation has run yet, computes it on-demand.
+    """
+    if camera_manager.live_risk is None:
+        risk = camera_manager.compute_facility_live_risk()
+        if risk:
+            camera_manager.live_risk = risk
+    return camera_manager.live_risk or {"message": "No cameras registered yet"}
+
+
+@router.get("/live-risk/history")
+async def get_live_risk_history(
+    limit: int = 60,
+    current_user=Depends(get_current_user),
+):
+    """Return time-series of facility risk scores (most recent `limit` entries)."""
+    history = list(camera_manager.live_risk_history)[-limit:]
+    return {"history": history, "total": len(history)}
 
 
 # ============ Live Video Feed ============

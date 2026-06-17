@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { monitoringAPI, API_BASE_URL } from '../api/apiClient';
 import BrowserCameraCapture from '../components/BrowserCameraCapture';
 import '../styles/Monitoring.css';
@@ -18,6 +19,140 @@ const SEVERITY_COLORS = {
   medium: '#f59e0b',
   low: '#6b7280',
 };
+
+const RISK_COLOR = (score) => {
+  if (!score) return '#6b7280';
+  if (score <= 40) return '#10b981';
+  if (score <= 60) return '#f59e0b';
+  if (score <= 80) return '#f97316';
+  return '#ef4444';
+};
+
+const RISK_LABEL = (score) => {
+  if (!score) return 'UNKNOWN';
+  if (score <= 40) return 'LOW';
+  if (score <= 60) return 'MODERATE';
+  if (score <= 80) return 'HIGH';
+  return 'CRITICAL';
+};
+
+function LiveRiskPanel({ liveRisk, history }) {
+  if (!liveRisk || !liveRisk.overall_score) {
+    return (
+      <div className="live-risk-panel live-risk-panel--empty">
+        <div className="live-risk-empty-icon">📡</div>
+        <p>Live risk score will appear here once cameras start monitoring and push their first frames.</p>
+      </div>
+    );
+  }
+
+  const score = liveRisk.overall_score;
+  const color = RISK_COLOR(score);
+  const ev = liveRisk.evidence || {};
+  const chartData = history.map((h, i) => ({
+    t: i,
+    score: h.overall_score,
+    label: new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  }));
+
+  return (
+    <div className="live-risk-panel">
+      <div className="live-risk-header">
+        <span className="live-risk-title">Facility Live Risk</span>
+        <span className="live-risk-auto-badge">AUTO</span>
+        <span className="live-risk-ts">
+          Updated {new Date(liveRisk.timestamp).toLocaleTimeString()}
+        </span>
+      </div>
+
+      <div className="live-risk-body">
+        {/* Score ring */}
+        <div className="live-risk-score-wrap">
+          <div className="live-risk-ring" style={{ borderColor: color }}>
+            <span className="live-risk-number" style={{ color }}>{score.toFixed(1)}</span>
+            <span className="live-risk-level" style={{ color }}>{RISK_LABEL(score)} RISK</span>
+          </div>
+        </div>
+
+        {/* Category bars */}
+        <div className="live-risk-categories">
+          {Object.entries(liveRisk.category_scores || {}).map(([cat, val]) => (
+            <div key={cat} className="live-risk-cat-row">
+              <span className="live-risk-cat-name">{cat}</span>
+              <div className="live-risk-cat-track">
+                <div
+                  className="live-risk-cat-fill"
+                  style={{ width: `${val}%`, background: RISK_COLOR(val) }}
+                />
+              </div>
+              <span className="live-risk-cat-val" style={{ color: RISK_COLOR(val) }}>
+                {val}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Sparkline */}
+        {chartData.length > 1 && (
+          <div className="live-risk-chart">
+            <ResponsiveContainer width="100%" height={70}>
+              <LineChart data={chartData}>
+                <XAxis dataKey="label" hide />
+                <YAxis domain={[0, 100]} hide />
+                <Tooltip
+                  formatter={(v) => [`${v}`, 'Risk']}
+                  labelFormatter={(_, p) => p[0]?.payload?.label || ''}
+                  contentStyle={{ fontSize: '0.72rem' }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="score"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  dot={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+            <span className="live-risk-chart-label">Last {chartData.length} min</span>
+          </div>
+        )}
+      </div>
+
+      {/* Evidence chips */}
+      <div className="live-risk-evidence">
+        <span className="evidence-chip">
+          {ev.cameras_monitoring}/{ev.cameras_total} cameras active
+        </span>
+        {ev.avg_camera_health != null && (
+          <span className="evidence-chip">Health avg {ev.avg_camera_health}%</span>
+        )}
+        {ev.zone_intrusions_30m > 0 && (
+          <span className="evidence-chip evidence-chip--warn">
+            {ev.zone_intrusions_30m} intrusion{ev.zone_intrusions_30m !== 1 ? 's' : ''} (30m)
+          </span>
+        )}
+        {ev.after_hours_30m > 0 && (
+          <span className="evidence-chip evidence-chip--warn">
+            {ev.after_hours_30m} after-hours (30m)
+          </span>
+        )}
+        {ev.threat_detections_60m > 0 && (
+          <span className="evidence-chip evidence-chip--danger">
+            {ev.threat_detections_60m} threat{ev.threat_detections_60m !== 1 ? 's' : ''} (60m)
+          </span>
+        )}
+        {ev.unacked_alerts_60m > 0 && (
+          <span className="evidence-chip evidence-chip--warn">
+            {ev.unacked_alerts_60m} unacked alert{ev.unacked_alerts_60m !== 1 ? 's' : ''}
+          </span>
+        )}
+        {ev.persons_visible != null && (
+          <span className="evidence-chip">{ev.persons_visible} person{ev.persons_visible !== 1 ? 's' : ''} visible</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function StatusBadge({ status }) {
   return (
@@ -46,6 +181,9 @@ export default function Monitoring() {
   const [wsConnected, setWsConnected] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const [liveRisk, setLiveRisk] = useState(null);
+  const [liveRiskHistory, setLiveRiskHistory] = useState([]);
 
   const [form, setForm] = useState({ camera_id: '', name: '', source: '', location: '' });
   const [settingsForm, setSettingsForm] = useState({});
@@ -80,10 +218,22 @@ export default function Monitoring() {
     } catch (e) { /* silent */ }
   }, []);
 
+  const loadLiveRisk = useCallback(async () => {
+    try {
+      const [riskRes, histRes] = await Promise.all([
+        monitoringAPI.getLiveRisk(),
+        monitoringAPI.getLiveRiskHistory(60),
+      ]);
+      if (riskRes.data?.overall_score) setLiveRisk(riskRes.data);
+      setLiveRiskHistory(histRes.data?.history || []);
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => {
     loadCameras();
     loadAlerts();
     loadSettings();
+    loadLiveRisk();
   }, []);
 
   useEffect(() => {
@@ -115,6 +265,9 @@ export default function Monitoring() {
         } else if (msg.type === 'initial_state') {
           setCameras(msg.data.cameras || []);
           setAlerts(msg.data.alerts || []);
+        } else if (msg.type === 'live_risk_update') {
+          setLiveRisk(msg.data);
+          setLiveRiskHistory(prev => [...prev, msg.data].slice(-120));
         }
       } catch { /* ignore parse errors */ }
     };
@@ -236,6 +389,9 @@ export default function Monitoring() {
           ⚠️ {error} <span style={{ float: 'right', cursor: 'pointer' }}>✕</span>
         </div>
       )}
+
+      {/* Facility Live Risk */}
+      <LiveRiskPanel liveRisk={liveRisk} history={liveRiskHistory} />
 
       {/* Register Camera Form */}
       {showRegister && (

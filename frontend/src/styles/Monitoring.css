@@ -390,3 +390,180 @@
 }
 
 .empty-state p { margin-bottom: 1rem; }
+
+/* ── Live Risk Panel ─────────────────────────────────────────── */
+.live-risk-panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow);
+}
+
+.live-risk-panel--empty {
+  text-align: center;
+  padding: 1.5rem;
+  color: #9ca3af;
+  background: #f9fafb;
+  border-style: dashed;
+}
+
+.live-risk-panel--empty .live-risk-empty-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}
+
+.live-risk-panel--empty p {
+  font-size: 0.85rem;
+  max-width: 380px;
+  margin: 0 auto;
+}
+
+.live-risk-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.live-risk-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.live-risk-auto-badge {
+  background: #6366f1;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
+}
+
+.live-risk-ts {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.live-risk-body {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.live-risk-score-wrap {
+  flex-shrink: 0;
+}
+
+.live-risk-ring {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 5px solid;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.live-risk-number {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.live-risk-level {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+}
+
+.live-risk-categories {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.live-risk-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+}
+
+.live-risk-cat-name {
+  width: 140px;
+  flex-shrink: 0;
+  color: #6b7280;
+}
+
+.live-risk-cat-track {
+  flex: 1;
+  height: 6px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.live-risk-cat-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.live-risk-cat-val {
+  width: 28px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.live-risk-chart {
+  flex: 1;
+  min-width: 140px;
+  max-width: 240px;
+}
+
+.live-risk-chart-label {
+  display: block;
+  font-size: 0.68rem;
+  color: #9ca3af;
+  text-align: center;
+  margin-top: 2px;
+}
+
+.live-risk-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.evidence-chip {
+  font-size: 0.72rem;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: #f3f4f6;
+  color: #374151;
+  font-weight: 500;
+}
+
+.evidence-chip--warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.evidence-chip--danger {
+  background: #fee2e2;
+  color: #991b1b;
+}

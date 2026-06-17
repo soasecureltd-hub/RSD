@@ -11,6 +11,7 @@ import numpy as np
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
+from collections import deque
 from enum import Enum
 import logging
 
@@ -47,6 +48,17 @@ class CameraStream:
 
 
 @dataclass
+class SecurityEvent:
+    """A timestamped security observation from any camera."""
+    timestamp: datetime
+    camera_id: str
+    camera_name: str
+    event_type: str   # zone_intrusion | threat_object | after_hours | crowd | camera_issue
+    severity: str     # critical | high | medium | low
+    data: dict = field(default_factory=dict)
+
+
+@dataclass
 class Alert:
     """Real-time alert"""
     id: str
@@ -80,6 +92,13 @@ class CameraManager:
         self._tasks: Dict[str, asyncio.Task] = {}
         self._running = False
         self._alert_counter = 0
+
+        # Facility-level live risk
+        self.event_log: deque = deque(maxlen=1000)          # rolling security events
+        self.live_risk: Optional[Dict] = None                # latest computed facility risk
+        self.live_risk_history: deque = deque(maxlen=120)    # 2-hour sparkline at 1-min intervals
+        self._facility_last_computed: Optional[datetime] = None
+        self._facility_compute_interval: int = 60            # recompute at most once per minute
 
     def register_camera(
         self,
@@ -264,6 +283,8 @@ class CameraManager:
 
         if detected_threats:
             threat_names = [d["class"] for d in detected_threats]
+            for det in detected_threats:
+                self.record_event(camera_id, "threat_object", "critical", det)
             await self._emit_alert(
                 camera_id=camera_id,
                 alert_type="threat_detected",
@@ -278,6 +299,7 @@ class CameraManager:
         # Check for unusual crowd (more than 10 people)
         person_count = analysis.get("object_counts", {}).get("person", 0)
         if person_count > 10:
+            self.record_event(camera_id, "crowd", "medium", {"person_count": person_count})
             await self._emit_alert(
                 camera_id=camera_id,
                 alert_type="crowd_detected",
@@ -285,6 +307,13 @@ class CameraManager:
                 message=f"Unusual crowd on '{stream.name}': {person_count} people detected",
                 details={"person_count": person_count}
             )
+
+        # After-hours detection
+        hour = datetime.now(timezone.utc).hour
+        if (hour >= 19 or hour < 6) and person_count > 0:
+            self.record_event(camera_id, "after_hours", "high", {
+                "person_count": person_count, "hour": hour
+            })
 
     async def _compute_risk_assessment(self, camera_id: str):
         """
@@ -456,6 +485,163 @@ class CameraManager:
             }
             for a in alerts[-limit:]
         ]
+
+    # ── Facility-level live risk ──────────────────────────────────────────────
+
+    def record_event(
+        self,
+        camera_id: str,
+        event_type: str,
+        severity: str,
+        data: dict = None,
+    ):
+        """Record a security event from any camera into the rolling event log."""
+        name = self.cameras[camera_id].name if camera_id in self.cameras else camera_id
+        self.event_log.append(SecurityEvent(
+            timestamp=datetime.now(timezone.utc),
+            camera_id=camera_id,
+            camera_name=name,
+            event_type=event_type,
+            severity=severity,
+            data=data or {},
+        ))
+
+    def compute_facility_live_risk(self) -> Optional[Dict]:
+        """
+        Aggregate observations from ALL cameras into a facility-level risk score.
+
+        Category mapping (higher score = higher risk, range 10–90):
+          Physical Security    ← camera health + offline rate
+          Access Control       ← zone intrusions + after-hours detections (last 30 min)
+          Personnel            ← visible person count vs expected
+          Incident History     ← threat objects + crowd events + unacked alerts (last 60 min)
+          Emergency Preparedness ← camera coverage rate
+        """
+        cameras = list(self.cameras.values())
+        if not cameras:
+            return None
+
+        monitoring = [c for c in cameras if c.status == CameraStatus.MONITORING]
+        error_cams  = [c for c in cameras if c.status == CameraStatus.ERROR]
+        total = len(cameras)
+        now = datetime.now(timezone.utc)
+
+        def recent(secs: int):
+            return [e for e in self.event_log
+                    if (now - e.timestamp).total_seconds() <= secs]
+
+        window_30 = recent(1800)
+        window_60 = recent(3600)
+
+        # ── Physical Security ─────────────────────────────────────────────
+        health_scores = [
+            c.last_risk_assessment.get("health_score", 50)
+            for c in monitoring if c.last_risk_assessment
+        ]
+        avg_health = float(np.mean(health_scores)) if health_scores else 50.0
+        offline_rate = len(error_cams) / total
+        # Low health → high risk; offline cameras → high risk
+        physical = max(10.0, min(90.0, (100 - avg_health) * 0.55 + offline_rate * 70))
+
+        # ── Access Control ────────────────────────────────────────────────
+        intrusions  = len([e for e in window_30 if e.event_type == "zone_intrusion"])
+        after_hours = len([e for e in window_30 if e.event_type == "after_hours"])
+        access = max(10.0, min(90.0, 10.0 + intrusions * 13 + after_hours * 9))
+
+        # ── Personnel ─────────────────────────────────────────────────────
+        person_counts = [
+            c.monitor.object_counts.get("person", 0)
+            for c in monitoring if c.monitor
+        ]
+        total_persons = sum(person_counts)
+        if len(monitoring) == 0:
+            personnel = 70.0   # no cameras monitoring → unknown risk
+        elif total_persons == 0:
+            personnel = 55.0   # no one visible → guards possibly absent
+        elif total_persons <= len(monitoring) * 2:
+            personnel = 20.0   # expected staffing level
+        else:
+            personnel = min(75.0, 20.0 + (total_persons - len(monitoring) * 2) * 6)
+
+        # ── Incident History ──────────────────────────────────────────────
+        threat_events = len([e for e in window_60 if e.event_type == "threat_object"])
+        crowd_events  = len([e for e in window_60 if e.event_type == "crowd"])
+        unacked_alerts = len([
+            a for a in self.alerts
+            if not a.acknowledged
+            and (now - a.timestamp).total_seconds() <= 3600
+        ])
+        incident = max(10.0, min(90.0, 15.0 + threat_events * 22 + crowd_events * 8 + unacked_alerts * 6))
+
+        # ── Emergency Preparedness ────────────────────────────────────────
+        coverage = len(monitoring) / total
+        emergency = max(10.0, min(90.0, 90.0 - coverage * 80.0))
+
+        weights = {
+            "Physical Security":      0.25,
+            "Access Control":         0.30,
+            "Personnel":              0.15,
+            "Incident History":       0.20,
+            "Emergency Preparedness": 0.10,
+        }
+        category_scores = {
+            "Physical Security":      round(physical,   1),
+            "Access Control":         round(access,     1),
+            "Personnel":              round(personnel,  1),
+            "Incident History":       round(incident,   1),
+            "Emergency Preparedness": round(emergency,  1),
+        }
+        overall = round(sum(category_scores[k] * weights[k] for k in weights), 1)
+        _, level, _ = risk_level(overall)
+
+        return {
+            "overall_score":    overall,
+            "risk_level":       level,
+            "category_scores":  category_scores,
+            "timestamp":        now.isoformat(),
+            "auto_generated":   True,
+            "evidence": {
+                "cameras_monitoring":        len(monitoring),
+                "cameras_total":             total,
+                "cameras_error":             len(error_cams),
+                "avg_camera_health":         round(avg_health, 1),
+                "zone_intrusions_30m":       intrusions,
+                "after_hours_30m":           after_hours,
+                "threat_detections_60m":     threat_events,
+                "crowd_events_60m":          crowd_events,
+                "unacked_alerts_60m":        unacked_alerts,
+                "persons_visible":           total_persons,
+            },
+        }
+
+    async def maybe_update_facility_risk(self):
+        """
+        Recompute the facility-level live risk if the cooldown has elapsed,
+        store it, append to history, and broadcast via WebSocket.
+        """
+        now = datetime.now(timezone.utc)
+        if (self._facility_last_computed and
+                (now - self._facility_last_computed).total_seconds()
+                < self._facility_compute_interval):
+            return
+
+        risk = self.compute_facility_live_risk()
+        if risk is None:
+            return
+
+        self.live_risk = risk
+        self._facility_last_computed = now
+        self.live_risk_history.append({
+            "timestamp":   risk["timestamp"],
+            "overall_score": risk["overall_score"],
+            "risk_level":  risk["risk_level"],
+        })
+
+        await self._broadcast({"type": "live_risk_update", "data": risk})
+        logger.info(
+            "Facility live risk updated: %.1f (%s)",
+            risk["overall_score"], risk["risk_level"],
+        )
 
     def acknowledge_alert(self, alert_id: str) -> bool:
         """Mark an alert as acknowledged"""

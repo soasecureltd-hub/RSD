@@ -65,6 +65,8 @@ export const monitoringAPI = {
   updateSettings: (data) => apiClient.put('/monitoring/settings', data),
   pushFrame: (cameraId, frameData) =>
     apiClient.post(`/monitoring/cameras/${cameraId}/push-frame`, { frame_data: frameData }),
+  getLiveRisk: () => apiClient.get('/monitoring/live-risk'),
+  getLiveRiskHistory: (limit = 60) => apiClient.get(`/monitoring/live-risk/history?limit=${limit}`),
 };
 
 export const health = () => apiClient.get('/');
