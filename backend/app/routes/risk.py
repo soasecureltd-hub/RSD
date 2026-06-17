@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app import schemas, crud
 from app.db import get_db
 from app.dependencies import get_current_user
-from app.services.risk_service import compute_scores, risk_level, run_anomaly_engine
+from app.services.risk_service import compute_scores, risk_level, run_anomaly_engine, compute_risk_velocity
 from app.services.ml_service import predict as ml_predict
 
 logger = logging.getLogger(__name__)
@@ -99,11 +99,45 @@ def detect_anomalies(
     if not db_assessment:
         raise HTTPException(status_code=404, detail="Assessment not found")
     try:
-        anomalies = run_anomaly_engine(db_assessment.input_data)
+        # Fetch user's historical assessments to use as the anomaly baseline.
+        # Exclude the current assessment so it doesn't contaminate its own baseline.
+        all_assessments = crud.get_all_assessments(
+            db, user_id=current_user.id, skip=0, limit=50
+        )
+        historical_scores = [
+            a.category_scores
+            for a in all_assessments
+            if a.id != assessment_id and a.category_scores
+        ]
+
+        result = run_anomaly_engine(
+            db_assessment.input_data,
+            current_category_scores=db_assessment.category_scores,
+            historical_category_scores=historical_scores,
+        )
+
+        # Risk velocity: compare against the most recent prior assessment
+        velocity = None
+        prior = next(
+            (a for a in all_assessments if a.id != assessment_id and a.category_scores),
+            None,
+        )
+        if prior and db_assessment.category_scores:
+            velocity = compute_risk_velocity(
+                current_scores=db_assessment.category_scores,
+                current_overall=db_assessment.overall_score or 0.0,
+                previous_scores=prior.category_scores,
+                previous_overall=prior.overall_score or 0.0,
+            )
+
+        alerts = result["alerts"]
         return schemas.AnomalyDetectionResponse(
-            total_anomalies=len(anomalies),
-            anomalies=[schemas.AnomalyAlert(**a) for a in anomalies],
-            status="success" if len(anomalies) == 0 else "warning",
+            total_anomalies=len(alerts),
+            anomalies=[schemas.AnomalyAlert(**a) for a in alerts],
+            status="success" if not alerts else "warning",
+            multivariate_anomaly=result["multivariate_anomaly"],
+            anomaly_score=result["anomaly_score"],
+            risk_velocity=velocity,
         )
     except Exception:
         logger.exception("Anomaly detection failed for assessment %s", assessment_id)
@@ -143,6 +177,7 @@ def predict_risk(
             insider_threat=predictions["insider_threat"],
             emergency_failure=predictions["emergency_failure"],
             perimeter_breach=predictions["perimeter_breach"],
+            confidence=predictions.get("confidence", 0.0),
         )
     except Exception:
         logger.exception("ML prediction failed for assessment %s", assessment_id)

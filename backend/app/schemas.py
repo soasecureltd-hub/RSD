@@ -157,6 +157,7 @@ class AIPredictionResponse(BaseModel):
     insider_threat: float
     emergency_failure: float
     perimeter_breach: float
+    confidence: float = 0.0
     risk_labels: List[str] = Field(default=[
         "Unauthorized Access",
         "Insider Threat",
@@ -173,10 +174,16 @@ class AnomalyAlert(BaseModel):
     z_score: float
     value: float
     message: str
+    direction: Optional[str] = None           # "above" or "below" baseline
+    baseline_mean: Optional[float] = None
+    percent_deviation: Optional[float] = None
 
 
 class AnomalyDetectionResponse(BaseModel):
     total_anomalies: int
     anomalies: List[AnomalyAlert]
     status: str
+    multivariate_anomaly: bool = False        # IsolationForest global flag
+    anomaly_score: float = 0.0               # 0–1, higher = more anomalous
+    risk_velocity: Optional[Dict] = None     # rate of change vs previous assessment
 
