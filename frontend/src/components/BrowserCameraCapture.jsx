@@ -80,7 +80,6 @@ export default function BrowserCameraCapture({ cameraId, cameraName }) {
   return (
     <div className="browser-capture">
       <canvas ref={canvasRef} style={{ display: 'none' }} />
-
       {!active ? (
         <button className="btn-sm btn-primary" onClick={startWebcam}>
           📷 Enable Webcam
@@ -93,41 +92,40 @@ export default function BrowserCameraCapture({ cameraId, cameraName }) {
 
       {error && <div className="browser-capture-error">{error}</div>}
 
-      {active && (
-        <div className="browser-capture-feed">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            style={{ width: '100%', borderRadius: '6px', display: 'block', background: '#000' }}
-          />
-          <div className="browser-capture-overlay">
-            <span className="pulse" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#ef4444', marginRight: 6 }} />
-            LIVE · pushing every 3s
-          </div>
-
-          {lastResult && (
-            <div className="browser-capture-stats">
-              <span style={{ color: healthColor(lastResult.health_score), fontWeight: 700 }}>
-                Health {lastResult.health_score?.toFixed(0)}/100
-              </span>
-              {Object.keys(lastResult.object_counts || {}).length > 0 && (
-                <span>
-                  {Object.entries(lastResult.object_counts)
-                    .map(([k, v]) => `${v} ${k}`)
-                    .join(' · ')}
-                </span>
-              )}
-              {lastResult.zone_intrusions?.length > 0 && (
-                <span style={{ color: '#ef4444', fontWeight: 700 }}>
-                  🚨 {lastResult.zone_intrusions.length} intrusion{lastResult.zone_intrusions.length > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-          )}
+      {/* Feed wrapper — always contains the video so the ref is always mounted */}
+      <div className="browser-capture-feed" style={{ display: active ? 'block' : 'none' }}>
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          style={{ width: '100%', borderRadius: '6px', display: 'block', background: '#000' }}
+        />
+        <div className="browser-capture-overlay">
+          <span className="pulse" style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#ef4444', marginRight: 6 }} />
+          LIVE · pushing every 3s
         </div>
-      )}
+
+        {lastResult && (
+          <div className="browser-capture-stats">
+            <span style={{ color: healthColor(lastResult.health_score), fontWeight: 700 }}>
+              Health {lastResult.health_score?.toFixed(0)}/100
+            </span>
+            {Object.keys(lastResult.object_counts || {}).length > 0 && (
+              <span>
+                {Object.entries(lastResult.object_counts)
+                  .map(([k, v]) => `${v} ${k}`)
+                  .join(' · ')}
+              </span>
+            )}
+            {lastResult.zone_intrusions?.length > 0 && (
+              <span style={{ color: '#ef4444', fontWeight: 700 }}>
+                🚨 {lastResult.zone_intrusions.length} intrusion{lastResult.zone_intrusions.length > 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
