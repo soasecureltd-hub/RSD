@@ -61,9 +61,16 @@ export default function AIPredictions({ assessmentId }) {
 
   return (
     <div className="ai-predictions">
-      <h2>🤖 AI Risk Predictions</h2>
+      <div className="predictions-title-row">
+        <h2>AI Risk Predictions</h2>
+        {predictions?.confidence != null && (
+          <span className="confidence-badge">
+            Model confidence: {Math.round(predictions.confidence * 100)}%
+          </span>
+        )}
+      </div>
       <p className="subtitle">
-        Machine learning predictions powered by scikit-learn LogisticRegression
+        RandomForest classifier — trained on domain-informed facility risk archetypes
         {simulationMode && ' — showing What-If simulation'}
       </p>
 

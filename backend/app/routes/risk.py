@@ -1,12 +1,14 @@
 """Risk assessment routes"""
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from app import schemas, crud
 from app.db import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, authenticate_token
 from app.services.risk_service import compute_scores, risk_level, run_anomaly_engine, compute_risk_velocity
 from app.services.ml_service import predict as ml_predict
+from app.services.report_service import generate_pdf
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +144,40 @@ def detect_anomalies(
     except Exception:
         logger.exception("Anomaly detection failed for assessment %s", assessment_id)
         raise HTTPException(status_code=400, detail="Could not run anomaly detection")
+
+
+@router.get("/assess/{assessment_id}/report")
+def download_report(
+    assessment_id: int,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+):
+    """Download a PDF report for a completed assessment. Auth via ?token= query param."""
+    user = authenticate_token(token, db)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    db_assessment = crud.get_assessment(db, assessment_id, user_id=user.id)
+    if not db_assessment:
+        raise HTTPException(status_code=404, detail="Assessment not found")
+    if not db_assessment.category_scores:
+        raise HTTPException(status_code=400, detail="Assessment has no computed scores yet")
+
+    ai_pred = crud.get_ai_prediction(db, assessment_id)
+
+    try:
+        pdf_bytes = generate_pdf(db_assessment, ai_pred)
+    except Exception:
+        logger.exception("PDF generation failed for assessment %s", assessment_id)
+        raise HTTPException(status_code=500, detail="Could not generate report")
+
+    safe_name = (db_assessment.facility_name or "Assessment").replace(" ", "_")
+    filename = f"RSD_Report_{safe_name}_{assessment_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.post("/predict/{assessment_id}", response_model=schemas.AIPredictionResponse)

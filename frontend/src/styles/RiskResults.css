@@ -116,6 +116,88 @@
   color: var(--text);
 }
 
+.facility-name {
+  font-size: 14px;
+  color: #6b7280;
+  margin-top: 6px;
+}
+
+/* Insight summary strip */
+.insight-strip {
+  display: flex;
+  gap: 1px;
+  background: var(--border);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.insight-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 8px;
+  background: white;
+  min-width: 0;
+}
+
+.insight-item--alert { background: #fef2f2; }
+.insight-item--good  { background: #f0fdf4; }
+
+.insight-label {
+  font-size: 0.7rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  font-weight: 600;
+  margin-bottom: 4px;
+  white-space: nowrap;
+}
+
+.insight-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--dark);
+}
+
+/* Mini gauge bar in weaknesses */
+.mini-gauge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.mini-gauge-track {
+  flex: 1;
+  height: 5px;
+  background: #e5e7eb;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mini-gauge-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.mini-gauge-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  min-width: 30px;
+}
+
+.weakness-level {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
 .action-buttons {
   display: flex;
   gap: 10px;

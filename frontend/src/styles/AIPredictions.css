@@ -7,6 +7,29 @@
   margin: 0 auto;
 }
 
+.predictions-title-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.predictions-title-row h2 {
+  margin: 0;
+  color: var(--primary);
+}
+
+.confidence-badge {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+}
+
 .ai-predictions h2 {
   color: var(--primary);
   margin-bottom: 10px;

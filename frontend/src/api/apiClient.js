@@ -41,6 +41,7 @@ export const riskAPI = {
   listAssessments: (skip = 0, limit = 100) => apiClient.get(`/risk/assessments?skip=${skip}&limit=${limit}`),
   detectAnomalies: (assessmentId) => apiClient.post(`/risk/anomaly/${assessmentId}`),
   predict: (assessmentId) => apiClient.post(`/risk/predict/${assessmentId}`),
+  reportUrl: (assessmentId, token) => `${API_BASE_URL}/risk/assess/${assessmentId}/report?token=${encodeURIComponent(token)}`,
 };
 
 export const cameraAPI = {
