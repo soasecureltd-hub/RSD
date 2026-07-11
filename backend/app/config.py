@@ -20,21 +20,9 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     API_TITLE: str = "Risk-Security Diagnostic API"
     API_VERSION: str = "1.0.0"
-    
-    # Camera
-    CAMERA_HISTORY_SIZE: int = 100
-    CAMERA_FRAME_SKIP: int = 3
-    YOLO_CONFIDENCE_THRESHOLD: float = 0.5  # Minimum confidence for object detections
-
-    # Limits for uploaded frames (guards against decompression-bomb / memory DoS)
-    MAX_FRAME_BYTES: int = 8 * 1024 * 1024  # 8 MB decoded image data
-    MAX_FRAME_PIXELS: int = 25_000_000  # ~25 MP (e.g. 6000x4000)
 
     # ML Model
     MODEL_PATH: str = "security_multiorg_model.pkl"
-
-    # Rate limiting
-    RATE_LIMIT_CAMERA_ANALYZE: str = "20/minute"  # Max frame submissions per client
 
     # NOTE: SQLite does not support concurrent writes. If deploying with Gunicorn
     # and multiple workers (--workers > 1), switch DATABASE_URL to PostgreSQL.

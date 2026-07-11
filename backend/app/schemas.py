@@ -66,56 +66,6 @@ class RiskAssessmentResponse(BaseModel):
         from_attributes = True
 
 
-# ============ Camera Health Schemas ============
-
-class CameraMetrics(BaseModel):
-    blur_score: float
-    brightness: float
-    contrast: float
-    noise_level: float
-    fps: float
-    obstruction_score: float = 0.0
-
-
-class ZoneInput(BaseModel):
-    id: str
-    name: str
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-class DetectionObject(BaseModel):
-    """Detected object in frame"""
-    class_: str = Field(alias="class")
-    confidence: float
-    box: List[float]  # [x1, y1, x2, y2]
-    
-    class Config:
-        populate_by_name = True
-
-
-class CameraHealthInput(BaseModel):
-    camera_id: str
-    frame_data: str  # Base64 encoded image
-    zones: List[ZoneInput] = Field(default=[])
-
-
-class CameraHealthResponse(BaseModel):
-    camera_id: str
-    health_score: float
-    metrics: CameraMetrics
-    issues: List[str]
-    status: str
-    timestamp: datetime
-    detections: List[Dict] = Field(default=[])
-    object_counts: Dict[str, int] = Field(default={})
-    detection_enabled: bool = Field(default=False)
-    zone_intrusions: List[Dict] = Field(default=[])
-    auto_risk_scores: Dict[str, str] = Field(default={})
-
-
 # ============ Auth Schemas ============
 
 class UserCreate(BaseModel):

@@ -6,12 +6,19 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 from app.config import settings
 
 DATABASE_URL = settings.DATABASE_URL
+_is_sqlite = DATABASE_URL.startswith("sqlite")
 
-# Create engine
+# Create engine.
+# For cloud Postgres (e.g. Supabase) pool_pre_ping validates a connection before
+# use — Supabase drops idle connections, which would otherwise surface as random
+# "server closed the connection unexpectedly" errors. pool_recycle proactively
+# refreshes connections older than 30 minutes.
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {},
-    echo=False
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    pool_pre_ping=not _is_sqlite,
+    pool_recycle=-1 if _is_sqlite else 1800,
+    echo=False,
 )
 
 # Session factory

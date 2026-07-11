@@ -41,26 +41,6 @@ class Assessment(Base):
     notes = Column(Text, nullable=True)
 
 
-class CameraHealth(Base):
-    """Camera health monitoring record"""
-    __tablename__ = "camera_health"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    camera_id = Column(String, index=True)
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    
-    # Metrics
-    health_score = Column(Float, nullable=False)
-    blur_score = Column(Float, nullable=True)
-    brightness = Column(Float, nullable=True)
-    contrast = Column(Float, nullable=True)
-    noise_level = Column(Float, nullable=True)
-    fps = Column(Float, nullable=True)
-    
-    # Issues
-    issues = Column(JSON, nullable=True)  # List of detected issues
-    
-
 class AIPrediction(Base):
     """AI model prediction record"""
     __tablename__ = "ai_predictions"

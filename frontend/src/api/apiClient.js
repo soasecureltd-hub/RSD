@@ -44,30 +44,5 @@ export const riskAPI = {
   reportUrl: (assessmentId, token) => `${API_BASE_URL}/risk/assess/${assessmentId}/report?token=${encodeURIComponent(token)}`,
 };
 
-export const cameraAPI = {
-  analyzeFrame: (cameraId, frameData, zones = []) => apiClient.post('/camera/analyze', { camera_id: cameraId, frame_data: frameData, zones }),
-  getCameraStatus: (cameraId = 'CAM-DEFAULT') => apiClient.get(`/camera/health/${cameraId}`),
-  getCameraHistory: (cameraId, limit = 100) => apiClient.get(`/camera/history/${cameraId}?limit=${limit}`),
-  getCameraRiskEstimation: (cameraId = 'CAM-DEFAULT') => apiClient.get(`/camera/risk-estimation/${cameraId}`),
-};
-
-export const monitoringAPI = {
-  listCameras: () => apiClient.get('/monitoring/cameras'),
-  registerCamera: (data) => apiClient.post('/monitoring/cameras', data),
-  removeCamera: (id) => apiClient.delete(`/monitoring/cameras/${id}`),
-  getCamera: (id) => apiClient.get(`/monitoring/cameras/${id}`),
-  startMonitoring: (id) => apiClient.post(`/monitoring/cameras/${id}/start`),
-  stopMonitoring: (id) => apiClient.post(`/monitoring/cameras/${id}/stop`),
-  getAlerts: (limit = 50, severity) =>
-    apiClient.get('/monitoring/alerts', { params: { limit, ...(severity && { severity }) } }),
-  acknowledgeAlert: (id) => apiClient.post(`/monitoring/alerts/${id}/acknowledge`),
-  getSettings: () => apiClient.get('/monitoring/settings'),
-  updateSettings: (data) => apiClient.put('/monitoring/settings', data),
-  pushFrame: (cameraId, frameData) =>
-    apiClient.post(`/monitoring/cameras/${cameraId}/push-frame`, { frame_data: frameData }),
-  getLiveRisk: () => apiClient.get('/monitoring/live-risk'),
-  getLiveRiskHistory: (limit = 60) => apiClient.get(`/monitoring/live-risk/history?limit=${limit}`),
-};
-
 export const health = () => apiClient.get('/');
 export default apiClient;

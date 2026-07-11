@@ -1,15 +1,10 @@
 """FastAPI main application"""
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
 from app.config import settings
 from app.db import init_db
-from app.routes import risk, camera, monitoring
+from app.routes import risk
 from app.routes import auth as auth_routes
-from app.routes.camera import limiter
-from app.services.camera_manager import camera_manager
 
 # Sentry (only if DSN is configured)
 if settings.SENTRY_DSN:
@@ -26,8 +21,6 @@ if settings.SENTRY_DSN:
 init_db()
 
 app = FastAPI(title=settings.API_TITLE, version=settings.API_VERSION, debug=settings.DEBUG)
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -39,13 +32,6 @@ app.add_middleware(
 
 app.include_router(auth_routes.router)
 app.include_router(risk.router)
-app.include_router(camera.router)
-app.include_router(monitoring.router)
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await camera_manager.shutdown()
 
 
 @app.get("/")

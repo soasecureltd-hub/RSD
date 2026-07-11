@@ -40,7 +40,6 @@ env/
 
 # Node
 node_modules/
-package-lock.json
 yarn.lock
 dist/
 .next/
