@@ -19,8 +19,8 @@ export default function Home({ onNavigate }) {
           <p>Get detailed scores, charts, and recommendations instantly</p>
         </div>
         <div className="feature-card">
-          <h3>🎥 Camera Monitoring</h3>
-          <p>Monitor camera health and video quality in real-time</p>
+          <h3>🤖 AI Predictions</h3>
+          <p>Model-driven threat probabilities across key risk vectors</p>
         </div>
         <div className="feature-card">
           <h3>🚨 Anomaly Detection</h3>
@@ -31,9 +31,6 @@ export default function Home({ onNavigate }) {
       <div className="cta">
         <button onClick={() => onNavigate('dashboard')} className="btn-primary-large">
           🚀 Start Assessment
-        </button>
-        <button onClick={() => onNavigate('camera')} className="btn-secondary-large">
-          🎥 Monitor Camera
         </button>
       </div>
     </div>

@@ -122,39 +122,6 @@ def get_all_assessments(db: Session, user_id: int, skip: int = 0, limit: int = 1
     )
 
 
-def create_camera_health(
-    db: Session,
-    camera_id: str,
-    health_data: dict
-) -> models.CameraHealth:
-    """Create camera health record"""
-    db_health = models.CameraHealth(
-        camera_id=camera_id,
-        health_score=health_data["health_score"],
-        blur_score=health_data["metrics"].get("blur_score"),
-        brightness=health_data["metrics"].get("brightness"),
-        contrast=health_data["metrics"].get("contrast"),
-        noise_level=health_data["metrics"].get("noise_level"),
-        fps=health_data["metrics"].get("fps"),
-        issues=health_data.get("issues", [])
-    )
-    db.add(db_health)
-    db.commit()
-    db.refresh(db_health)
-    return db_health
-
-
-def get_camera_health_history(
-    db: Session,
-    camera_id: str,
-    limit: int = 100
-):
-    """Get camera health history"""
-    return db.query(models.CameraHealth).filter(
-        models.CameraHealth.camera_id == camera_id
-    ).order_by(models.CameraHealth.created_at.desc()).limit(limit).all()
-
-
 def create_ai_prediction(
     db: Session,
     assessment_id: int,

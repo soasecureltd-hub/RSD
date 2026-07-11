@@ -10,7 +10,7 @@ services:
       - key: DEBUG
         value: false
       - key: DATABASE_URL
-        value: sqlite:///./rsd.db  # Replace with a Render PostgreSQL URL for persistent data
+        sync: false   # Set in the Render dashboard (Supabase Postgres URL). Never commit the password.
       - key: ALLOWED_ORIGINS
         value: https://rsd-frontend.onrender.com  # Replace with your actual frontend URL
       - key: SENTRY_DSN
